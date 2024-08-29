@@ -1,9 +1,10 @@
+require('dotenv').config();
 import R from 'ramda'
 import { createHash } from 'crypto'
 import { buildDesaturated } from './blueprinters'
 import {
   fmtName,
-  fmtBlueprinterTitles,
+  fmtBlueprinterTitles, 
   isFunction
 } from './util'
 
@@ -27,7 +28,7 @@ class Fetcher {
      * A unique ID for the Fetcher to identify its elements in the model layer
      */
     const bpsstring = Object.keys(bps).join(';')
-    this.id = createHash('md5').update(name).update(bpsstring).digest('hex')
+    this.id = createHash('md5').update(name).update(bpsstring).digest('hex') 
     /*
      * These are the available tabs for storing and retrieving data.
      * Each blueprinter is a function that returns a Blueprint from a
@@ -162,26 +163,34 @@ class GsheetFetcher extends Fetcher {
   }
 
   /** returns a Promise that resolves if access is granted to the account, and rejects otherwise. */
-  authenticate (env) {
-    const googleAuth = new google.auth.JWT(env.SERVICE_ACCOUNT_EMAIL, null, env.SERVICE_ACCOUNT_PRIVATE_KEY, [
-      'https://www.googleapis.com/auth/spreadsheets'
-    ])
-    this.auth = googleAuth
-    const { sheetId } = this
-    const me = this
+authenticate (env) {
+  // Replace \\n with \n in the private key 
+  // const privateKey = process.env.SERVICE_ACCOUNT_PRIVATE_KEY;
+  const privateKey = process.env.SERVICE_ACCOUNT_PRIVATE_KEY.replace(/\\n/g, '\n');
+  const googleAuth = new google.auth.JWT(
+    env.SERVICE_ACCOUNT_EMAIL,
+    null,
+    privateKey,
+    ['https://www.googleapis.com/auth/spreadsheets']
+  );
 
-    return new Promise((resolve, reject) => {
-      googleAuth.authorize(function (err) {
-        if (err) {
-          reject(err)
-        } else {
-          console.log(`Connected to ${me.sheetName}. (${me.type} with ID ${sheetId}).`)
-          console.log(`    grant access to: ${process.env.SERVICE_ACCOUNT_EMAIL}`)
-          resolve(me)
-        }
-      })
-    })
-  }
+  this.auth = googleAuth;
+  const { sheetId } = this;
+  const me = this;
+
+  return new Promise((resolve, reject) => {
+    googleAuth.authorize(function (err) {
+      if (err) {
+        reject(err);
+      } else {
+        console.log(`Connected to ${me.sheetName}. (${me.type} with ID ${sheetId}).`);
+        console.log(`Grant access to: ${process.env.SERVICE_ACCOUNT_EMAIL}`);
+        resolve(me);
+      }
+    });
+  });
+}
+
 
   update () {
     let tabTitles
